@@ -20,9 +20,8 @@ function App() {
     <div className="bg-black text-white px-[3vw] text-center min-h-screen">
       <section className="max-w-[650px] mx-auto">
          <WalletProvider>
-          {/* <Main />
-          <Footer /> */}
-          <Navbar /> 
+          <Main />
+          <Footer /> 
         </WalletProvider> 
         
        
