@@ -29,7 +29,22 @@ const Navbar = () => {
         dappMetadata: {
           name: "Futares-Presale",
           url: "frts-presale.vercel.app",
-        }
+        },
+        // Add BSC Mainnet configuration
+        networks: [
+          {
+            chainId: 56,  // BSC Mainnet Chain ID
+            rpcUrls: ["https://bsc-dataseed.binance.org/"],
+            chainName: "Binance Smart Chain Mainnet",
+            nativeCurrency: {
+              name: "BNB",
+              symbol: "BNB",
+              decimals: 18
+            },
+            blockExplorerUrls: ["https://bscscan.com"]
+          }
+        ],
+        defaultNetwork: "56" // Set BSC as the default network
       });
       setSDK(MMSDK);
     };
@@ -37,7 +52,7 @@ const Navbar = () => {
   }, []);
 
 
-  const checkAndSwitchNetworkMobile = async (ethereum) => {
+/*   const checkAndSwitchNetworkMobile = async (ethereum) => {
     try {
       const chainId = await ethereum.request({ method: 'eth_chainId' });
   
@@ -82,7 +97,7 @@ const Navbar = () => {
       console.error('Error checking/switching network:', error);
       throw error;
     }
-  };
+  }; */
   
   const connectToMetaMask = async () => {
     if (!sdk) return;
