@@ -3,6 +3,7 @@ import { IoClose } from 'react-icons/io5';
 import { toast, ToastContainer } from 'react-toastify';
 import { WalletContext } from './WalletContext';
 import { BrowserProvider, ethers } from 'ethers';
+import { MetaMaskSDK } from '@metamask/sdk';
 import WalletConnectProvider from "@walletconnect/web3-provider";
 import QRCodeModal from "@walletconnect/qrcode-modal";
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,12 +15,26 @@ const Navbar = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const { account, setAccount } = useContext(WalletContext);
   const [walletConnectProvider, setWalletConnectProvider] = useState(null);
+  const [sdk, setSDK] = useState(null);
 
   useEffect(() => {
     if (account) {
       checkNetwork();
     }
   }, [account]);
+
+  useEffect(() => {
+    const initializeSDK = async () => {
+      const MMSDK = new MetaMaskSDK({
+        dappMetadata: {
+          name: "Futares-Presale",
+          url: "frts-presale.vercel.app",
+        }
+      });
+      setSDK(MMSDK);
+    };
+    initializeSDK();
+  }, []);
 
   const checkNetwork = async () => {
     if (window.ethereum) {
@@ -69,6 +84,21 @@ const Navbar = () => {
     } else {
       console.error('MetaMask is not installed');
       return false;
+    }
+  };
+
+  const connectToMetaMask1 = async () => {
+    if (!sdk) return;
+    try {
+      const ethereum = sdk.getProvider();
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      setAccount(accounts[0]);
+
+      ethereum.on('accountsChanged', (newAccounts) => {
+        setAccount(newAccounts[0]);
+      });
+    } catch (error) {
+      console.error("Error connecting to MetaMask", error);
     }
   };
 
@@ -137,7 +167,7 @@ const Navbar = () => {
     }
   };
 
-  const connectWithWalletConnect = async () => {
+/*   const connectWithWalletConnect = async () => {
     try {
       const provider = new WalletConnectProvider({
         rpc: {
@@ -191,7 +221,7 @@ const Navbar = () => {
     } finally {
       setIsConnecting(false);
     }
-  };
+  }; */
 
   const handleAccountsChanged = (accounts) => {
     if (accounts.length === 0) {
@@ -221,7 +251,7 @@ const Navbar = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      connectWithWalletConnect();
+      connectToMetaMask1();
     } else {
       connectWallet();
     }
