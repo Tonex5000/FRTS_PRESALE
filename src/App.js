@@ -2,7 +2,7 @@ import buffer from 'buffer';
 
 import logo from './logo.svg';
 import './App.css';
-import Main from './main';
+import Main from './main3';
 import { MoralisProvider } from "react-moralis";
 import Footer from './Footer';
 import { WalletProvider } from './WalletContext';
