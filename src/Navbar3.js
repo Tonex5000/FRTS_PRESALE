@@ -8,7 +8,7 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 import QRCodeModal from "@walletconnect/qrcode-modal";
 import 'react-toastify/dist/ReactToastify.css';
 
-const BNB_MAINNET_CHAIN_ID = 0x38; // BSC Mainnet chain ID
+const BNB_MAINNET_CHAIN_ID = '0x38'; // BSC Mainnet chain ID
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,7 +19,7 @@ const Navbar = () => {
 
   useEffect(() => {
     if (account) {
-      checkNetwork();
+      checkAndSwitchNetwork();
     }
   }, [account]);
 
@@ -36,62 +36,63 @@ const Navbar = () => {
     initializeSDK();
   }, []);
 
-  const checkNetwork = async () => {
-    if (window.ethereum) {
-      try {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
 
-        if (chainId !== BNB_MAINNET_CHAIN_ID) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BNB_MAINNET_CHAIN_ID }],
-            });
-          } catch (switchError) {
-            if (switchError.code === 4902) {
-              try {
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [
-                    {
-                      chainId: BNB_MAINNET_CHAIN_ID,
-                      chainName: 'BNB Smart Chain',
-                      nativeCurrency: {
-                        name: 'BNB',
-                        symbol: 'BNB',
-                        decimals: 18,
-                      },
-                      rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                      blockExplorerUrls: ['https://bscscan.com'],
+  const checkAndSwitchNetworkMobile = async (ethereum) => {
+    try {
+      const chainId = await ethereum.request({ method: 'eth_chainId' });
+  
+      if (chainId !== BNB_MAINNET_CHAIN_ID) {
+        try {
+          await ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BNB_MAINNET_CHAIN_ID }],
+          });
+        } catch (switchError) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            try {
+              await ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: BNB_MAINNET_CHAIN_ID,
+                    chainName: 'BNB Smart Chain',
+                    nativeCurrency: {
+                      name: 'BNB',
+                      symbol: 'BNB',
+                      decimals: 18,
                     },
-                  ],
-                });
-              } catch (addError) {
-                console.error('Failed to add BNB Testnet:', addError);
-                throw addError;
-              }
-            } else {
-              console.error('Failed to switch network:', switchError);
-              throw switchError;
+                    rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                    blockExplorerUrls: ['https://bscscan.com'],
+                  },
+                ],
+              });
+            } catch (addError) {
+              console.error('Failed to add BNB Smart Chain:', addError);
+              throw addError;
             }
+          } else {
+            console.error('Failed to switch network:', switchError);
+            throw switchError;
           }
         }
-        return true;
-      } catch (error) {
-        console.error('Error checking network:', error);
-        return false;
       }
-    } else {
-      console.error('MetaMask is not installed');
-      return false;
+      return true;
+    } catch (error) {
+      console.error('Error checking/switching network:', error);
+      throw error;
     }
   };
-
+  
   const connectToMetaMask = async () => {
     if (!sdk) return;
     setIsConnecting(true);
     try {
       const ethereum = sdk.getProvider();
+      
+      // Check and switch network before connecting
+      await checkAndSwitchNetworkMobile(ethereum);
+  
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       setAccount(accounts[0]);
       setIsOpen(false);
@@ -102,7 +103,7 @@ const Navbar = () => {
         draggable: false,
         toastId: 17,
       });
-
+  
       ethereum.on('accountsChanged', (newAccounts) => {
         if (newAccounts.length === 0) {
           setAccount(null);
@@ -124,7 +125,7 @@ const Navbar = () => {
       });
     } catch (error) {
       console.error("Error connecting to MetaMask", error);
-      toast.error('Failed to connect wallet. Please try again.', {
+      toast.error('Failed to connect wallet. Please ensure you are on the BNB Smart Chain network and try again.', {
         position: "bottom-right",
         autoClose: 5000,
         closeOnClick: true,
@@ -136,16 +137,19 @@ const Navbar = () => {
     }
   };
 
-  const connectWallet = async () => {
+/*   const connectWallet = async () => {
     if (typeof window.ethereum !== 'undefined') {
       setIsConnecting(true);
       try {
+      
+
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         
         const provider = new BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
-        
+        await checkNetwork()
+
         setAccount(address);
         setIsOpen(false);
         toast.success('Wallet connected successfully', {
@@ -180,6 +184,126 @@ const Navbar = () => {
       } catch (error) {
         console.error("Error connecting MetaMask: ", error);
         toast.error('Failed to connect wallet. Please try again.', {
+          position: "bottom-right",
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: false,
+          toastId: 19,
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+    } else {
+      console.error('MetaMask not detected');
+      toast.error('MetaMask is not installed. Please install it to use this feature.', {
+        position: "bottom-right",
+        autoClose: false,
+        closeOnClick: true,
+        draggable: false,
+        toastId: 18,
+      });
+    }
+  }; */
+
+  const checkAndSwitchNetwork = async () => {
+    if (window.ethereum) {
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        console.log(chainId)
+        console.log(BNB_MAINNET_CHAIN_ID)
+  
+        if (chainId !== BNB_MAINNET_CHAIN_ID) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: BNB_MAINNET_CHAIN_ID }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              try {
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [
+                    {
+                      chainId: BNB_MAINNET_CHAIN_ID,
+                      chainName: 'BNB Smart Chain',
+                      nativeCurrency: {
+                        name: 'BNB',
+                        symbol: 'BNB',
+                        decimals: 18,
+                      },
+                      rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                      blockExplorerUrls: ['https://bscscan.com'],
+                    },
+                  ],
+                });
+              } catch (addError) {
+                console.error('Failed to add BNB Smart Chain:', addError);
+                throw addError;
+              }
+            } else {
+              console.error('Failed to switch network:', switchError);
+              throw switchError;
+            }
+          }
+        }
+        return true;
+      } catch (error) {
+        console.error('Error checking/switching network:', error);
+        throw error;
+      }
+    } else {
+      console.error('MetaMask is not installed');
+      throw new Error('MetaMask is not installed');
+    }
+  };
+  
+  const connectWallet = async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      setIsConnecting(true);
+      try {
+        // Check and switch network before connecting
+        await checkAndSwitchNetwork();
+  
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        const provider = new BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        
+        setAccount(address);
+        setIsOpen(false);
+        toast.success('Wallet connected successfully', {
+          position: "bottom-right",
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: false,
+          toastId: 17,
+        });
+  
+        // Listen for account changes
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) {
+            setAccount(null);
+            toast.info('Disconnected from MetaMask', {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              draggable: false,
+            });
+          } else {
+            setAccount(accounts[0]);
+            toast.info('MetaMask account changed', {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              draggable: false,
+            });
+          }
+        });
+      } catch (error) {
+        console.error("Error connecting MetaMask: ", error);
+        toast.error('Failed to connect wallet. Please ensure you are on the BNB Smart Chain network and try again.', {
           position: "bottom-right",
           autoClose: 5000,
           closeOnClick: true,
