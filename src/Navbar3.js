@@ -91,7 +91,7 @@ const Navbar = () => {
       const ethereum = sdk.getProvider();
       
       // Check and switch network before connecting
-      await checkAndSwitchNetworkMobile(ethereum);
+     // await checkAndSwitchNetworkMobile(ethereum);
   
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       setAccount(accounts[0]);
