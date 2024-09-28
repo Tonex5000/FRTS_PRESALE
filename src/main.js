@@ -1,189 +1,125 @@
-import React, { useState, useEffect, useContext } from "react";
-import { ButtonBase } from "@mui/material";
-import { ethers } from "ethers";
-import { BrowserProvider } from 'ethers';
-import { ToastContainer, toast } from 'react-toastify';
-import { WalletContext } from './WalletContext';
-import 'react-toastify/dist/ReactToastify.css';
-import ContractABI from "./Constant/ContractABI";
-import FormHeader from "./FormHeader";
-import StakeButton from "./StakingButton";
-import Navbar from "./Navbar";
+import React, { useState, useEffect } from 'react';
+import { ethers, BrowserProvider } from 'ethers';
+import ContractABI from './Constant/ContractABI';
 
-const CONTRACT_ADDRESS = "0x0b5c0017B8ca9300E51710Dc1160879d9fD77587";
-const CONTRACT_ABI = ContractABI;
+const contractABI = ContractABI;
 
-const Main = () => {
-  const [amount, setAmount] = useState(0);
-  const [tokenBalance, setTokenBalance] = useState(0);
-  const [noTokenLeft, setNoTokenLeft] = useState(0);
-  const [noTokenPurchased, setNoTokenPurchased] = useState(0);
-  const [stakeLoading, setStakeLoading] = useState(false);
+const contractAddress = "0xB6478FE0F82b2a6D41Dc4CCaE612C8b8382941BC"; // Replace with actual contract address
+
+const TokenPresale = () => {
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
-  const { account } = useContext(WalletContext);
+  const [tokenPrice, setTokenPrice] = useState(null);
+  const [tokensLeft, setTokensLeft] = useState(null);
+  const [tokensPurchased, setTokensPurchased] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [status, setStatus] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
-    if (account) {
-      initializeContract();
-    }
-  }, [account]); 
+    const init = async () => {
+      setDebugInfo('Initializing...');
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          setDebugInfo('Requesting account access...');
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          setDebugInfo('Creating Web3Provider...');
+          const provider = new BrowserProvider(window.ethereum);
+          setProvider(provider);
 
-  const initializeContract = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      const provider = new BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const newContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-      setContract(newContract);
-      await updateBalancesAndRewards(newContract, account);
+          setDebugInfo('Getting signer...');
+          const signer = await provider.getSigner();
+          setSigner(signer);
+
+          setDebugInfo('Creating contract instance...');
+          const contract = new ethers.Contract(contractAddress, contractABI, signer);
+          setContract(contract);
+
+          setDebugInfo('Initialization complete. Updating contract data...');
+          await updateContractData(contract);
+        } catch (error) {
+          console.error("Initialization error:", error);
+          setStatus("Failed to connect. Check console for details.");
+          setDebugInfo(`Initialization error: ${error.message}`);
+        }
+      } else {
+        setStatus("Please install MetaMask to use this app.");
+        setDebugInfo('MetaMask not detected');
+      }
+    };
+
+    init();
+  }, []);
+
+  const updateContractData = async (contract) => {
+    try {
+      setDebugInfo('Updating token price...');
+      const price = await contract.getTokenPriceInBnb();
+      setTokenPrice(ethers.formatEther(price));
+
+      setDebugInfo('Updating tokens left...');
+      const left = await contract.getTokensLeft();
+      setTokensLeft(ethers.formatEther(left));
+
+      setDebugInfo('Updating tokens purchased...');
+      const purchased = await contract.getTokensPurchased();
+      setTokensPurchased(ethers.formatEther(purchased));
+
+      setDebugInfo('Contract data updated successfully');
+    } catch (error) {
+      console.error("Error updating contract data:", error);
+      setDebugInfo(`Error updating contract data: ${error.message}`);
     }
   };
 
-  const updateBalancesAndRewards = async () => {
-    if (contract) {
+  const handleBuyTokens = async () => {
+    if (contract && amount) {
       try {
-        // Get the available tokens left in the contract
-        const availableTokens = await contract.getTokensLeft();
-        setNoTokenLeft(ethers.utils.formatUnits(availableTokens, 18)); // Convert from wei
-
-        // Get the total tokens purchased so far
-        const purchasedTokens = await contract.getTokensPurchased();
-        setNoTokenPurchased(ethers.utils.formatUnits(purchasedTokens, 18)); // Convert from wei
-
-        // Optionally, get the user's token balance (if relevant)
-        const userTokenBalance = await contract.balanceOf(account);
-        setTokenBalance(ethers.utils.formatUnits(userTokenBalance, 18)); // Convert from wei
-
+        setStatus('Processing transaction...');
+        setDebugInfo('Preparing to buy tokens...');
+        const amountInWei = ethers.parseEther(amount);
+        const price = ethers.parseEther(tokenPrice);
+        const value = amountInWei * price / ethers.parseEther('1');
+        
+        setDebugInfo(`Calling buyTokens with amount: ${amountInWei.toString()} and value: ${value.toString()}`);
+        const tx = await contract.buyTokens(amountInWei, { value });
+        
+        setDebugInfo('Transaction sent. Waiting for confirmation...');
+        await tx.wait();
+        
+        setStatus(`Successfully purchased ${amount} tokens!`);
+        setDebugInfo('Transaction confirmed. Updating contract data...');
+        await updateContractData(contract);
       } catch (error) {
-        console.error(error);
+        console.error("Error buying tokens:", error);
+        setStatus("Transaction failed. Check console for details.");
+        setDebugInfo(`Error buying tokens: ${error.message}`);
       }
     }
   };
-
-  const handleBuy = async (e) => {
-    e.preventDefault();
-    
-    if (contract && amount > 0) {
-      try {
-        setStakeLoading(true);
-        
-        // Get the price of the tokens in BNB (from the smart contract)
-        const tokenPriceBnb = await contract.getTokenPriceInBnb();
-        
-        // Calculate the required BNB based on the token amount entered by the user
-        const requiredBnb = ethers.BigNumber.from(amount)
-          .mul(tokenPriceBnb)
-          .div(ethers.BigNumber.from(10).pow(18)); // Adjusting decimals
-
-        // Call buyTokens with the token amount and send the required BNB
-        const tx = await contract.buyTokens(ethers.BigNumber.from(amount), {
-          value: requiredBnb, // Pass the calculated BNB
-        });
-        
-        await tx.wait(); // Wait for the transaction to be mined
-
-        toast.success("Tokens purchased successfully!", { containerId: 'notification' });
-
-        // Update the number of tokens left and purchased after a successful purchase
-        await updateBalancesAndRewards();
-        
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to purchase tokens. Please try again.", { containerId: 'notification' });
-      } finally {
-        setStakeLoading(false);
-      }
-    } else {
-      toast.error("Please enter a valid token amount.", { containerId: 'notification' });
-    }
-  };
-
-  const StakeForm = ({ amount, setAmount, tokenBalance, handleSubmit, buttonText, disabled = false, loading }) => (
-    <form onSubmit={handleSubmit}>
-      <div className="w-full mt-[8px]">
-        <p className="text-right">Max: {tokenBalance}</p>
-        <section className="flex justify-end">
-          <div className="flex items-center border border-black flex-[2] px-4 mr-[8px]">
-          <input
-            type="number"
-            name="stake"
-            id="stake"
-            min={0.1}  // Set minimum value to 0.1
-            step={0.1} // Ensure steps of 0.1
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full text-right no-arrows outline-none focus:outline-none border-none text-[24px] font-bold"
-            required  // Ensure input is required
-          />
-            <p className="ml-5 text-[24px] font-[100] tracking-[0.22512px] leading-[1.5]">
-              ETH
-            </p>
-          </div>
-          <ButtonBase
-            className="MuiTouchRipple-root"
-            onClick={() => setAmount(tokenBalance)}
-            style={{
-              backgroundColor: "#77787D",
-              padding: "20px",
-              paddingLeft: "24px",
-              paddingRight: "24px",
-              fontSize: "14px",
-              color: "white",
-              borderRadius: "5px",
-              textTransform: "uppercase",
-              fontWeight: 400,
-              letterSpacing: "0.02857em",
-              lineHeight: "1.75",
-            }}
-          >
-            Max
-          </ButtonBase>
-        </section>
-        <StakeButton type="submit" buttonText={buttonText} disabled={disabled} Loading={loading} />
-      </div>
-    </form>
-  );
 
   return (
-    <>
-      <ToastContainer position="top-right" autoClose={5000} containerId='notification' />
-      <Navbar />
-      {account ? (
-        <div className="mt-[70px]">
-          <article className="pb-[24px] my-[60px] mb-[80px] md:mb-[100px]">
-            <h2 className="text-[50px] leading-[56px] font-[400]">
-              FUTARES COIN
-            </h2>
-            <p className="text-[20px] font-[700] leading-[32px]">
-              Grow Your Wealth with Futares Coin and Secure the Future.
-            </p>
-          </article>
-          <main className="bg-white text-black rounded-[25px] w-full md:w-[450px] mx-auto p-[16px] pb-0">
-            <div className="mb-[24px]">
-              <FormHeader leading="Total Tokens" value="240 000 000 FTRS" />
-              <FormHeader leading="No of Tokens Purchased" value={`${noTokenPurchased} FTRS`} />
-              <FormHeader leading="No of Tokens Left" value={`${noTokenLeft} FTRS`} />
-            </div>
-            <StakeForm
-              amount={amount}
-              setAmount={setAmount}
-              tokenBalance={tokenBalance}
-              handleSubmit={handleBuy}
-              buttonText="BUY"
-              loading={stakeLoading}
-            />
-          </main>
-        </div>
-      ) : (
-        <div className="mt-[70px] text-center">
-          <h1>Please connect your wallet to Purchase the FTRS COIN.</h1>
-          <h2>Making Life Easier.</h2>
-        </div>
-      )}
-    </>
+    <div>
+      <h1>Token Presale</h1>
+      <p>Token Price: {tokenPrice ? `${tokenPrice} BNB` : 'Loading...'}</p>
+      <p>Tokens Left: {tokensLeft ?? 'Loading...'}</p>
+      <p>Tokens Purchased: {tokensPurchased ?? 'Loading...'}</p>
+      <input
+        type="number"
+        placeholder="Amount of tokens"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+      />
+      <button onClick={handleBuyTokens}>Buy Tokens</button>
+      {status && <p>Status: {status}</p>}
+      <div>
+        <h3>Debug Information:</h3>
+        <pre>{debugInfo}</pre>
+      </div>
+    </div>
   );
 };
 
-export default Main;
-
-
-
+export default TokenPresale;

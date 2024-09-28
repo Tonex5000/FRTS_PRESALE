@@ -1,126 +1,156 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { ButtonBase } from "@mui/material";
-import { ethers } from "ethers";
-import { BrowserProvider } from 'ethers';
+import { useMoralis, useWeb3Contract } from "react-moralis";
 import { ToastContainer, toast } from 'react-toastify';
-import { WalletContext } from './WalletContext';
 import 'react-toastify/dist/ReactToastify.css';
+import { ethers } from "ethers";
+
 import ContractABI from "./Constant/ContractABI";
 import FormHeader from "./FormHeader";
 import StakeButton from "./StakingButton";
-import Navbar from "./Navbar2";
+import Navbar from "./Navbar3";
 
-const CONTRACT_ADDRESS = "0xf401b25382AF3F06279c2C568D31d98171974B74";
+const CONTRACT_ADDRESS = "0xF58d145b4BE7c46B32Af12dA4Fcf6fBC0DED5AbA";
 const CONTRACT_ABI = ContractABI;
 
 const Main = () => {
+  // State variables
   const [amount, setAmount] = useState(0);
-  const [tokenBalance, setTokenBalance] = useState(0);
   const [noTokenLeft, setNoTokenLeft] = useState(0);
   const [noTokenPurchased, setNoTokenPurchased] = useState(0);
   const [buyLoading, setBuyLoading] = useState(false);
-  const [contract, setContract] = useState(null);
-  const { account, isCorrectNetwork } = useContext(WalletContext);
+  const [price, setPrice] = useState(0);
+  const [error, setError] = useState(null);
 
+  // Moralis hooks
+  const { isWeb3Enabled, account, chainId, Moralis } = useMoralis();
+  const isCorrectNetwork = chainId === "0x61"; // BNB Testnet
+
+  // Contract function hooks
+  const { runContractFunction: getTokensLeft } = useWeb3Contract({
+    abi: CONTRACT_ABI,
+    contractAddress: CONTRACT_ADDRESS,
+    functionName: "getTokensLeft"
+  });
+
+  const { runContractFunction: getTokensPurchased } = useWeb3Contract({
+    abi: CONTRACT_ABI,
+    contractAddress: CONTRACT_ADDRESS,
+    functionName: "getTokensPurchased",
+  });
+
+  const { runContractFunction: getTokenPriceInBnb } = useWeb3Contract({
+    abi: CONTRACT_ABI,
+    contractAddress: CONTRACT_ADDRESS,
+    functionName: "getTokenPriceInBnb",
+  });
+
+  const { runContractFunction: buyTokens } = useWeb3Contract({
+    abi: CONTRACT_ABI,
+    contractAddress: CONTRACT_ADDRESS,
+    functionName: "buyTokens",
+    /* params: {amount} */
+  });
+
+  // useEffect hook
   useEffect(() => {
-    if (account && isCorrectNetwork) {
-      initializeContract();
+    if (isWeb3Enabled && isCorrectNetwork) {
+      updateTokenInfo();
+      updateTokenPrice();
     } else {
-      // Reset contract-related state when not on the correct network
-      setContract(null);
-      setTokenBalance(0);
       setNoTokenLeft(0);
       setNoTokenPurchased(0);
+      setPrice(0);
     }
-  }, [account, isCorrectNetwork]);
+  }, [isWeb3Enabled, isCorrectNetwork]);
 
-  const initializeContract = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        const provider = new BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const newContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-        
-        if (typeof newContract.buyTokens !== 'function') {
-          throw new Error("Contract does not have the required 'buyTokens' function");
-        }
-        
-        setContract(newContract);
-        await updateTokenInfo(newContract);
-      } catch (error) {
-        console.error("Error initializing contract:", error);
-        toast.error(`Failed to initialize contract: ${error.message}`, {
-          containerId: 'notification'
-        });
-      }
-    } else {
-      toast.error("Ethereum provider not found. Please install MetaMask or another wallet.", {
-        containerId: 'notification'
-      });
-    }
-  };
-
-  const updateTokenInfo = async (contractInstance) => {
+  // Helper functions
+  const updateTokenInfo = async () => {
     try {
-      const tokensLeft = await contractInstance.getTokensLeft();
-      const tokensPurchased = await contractInstance.getTokensPurchased();
-
-      setNoTokenLeft(ethers.formatUnits(tokensLeft, 18));
-      setNoTokenPurchased(ethers.formatUnits(tokensPurchased, 18));
+      const tokensLeft = await getTokensLeft();
+      const tokensPurchased = await getTokensPurchased();
+      
+      setNoTokenLeft(Moralis.Units.FromWei(tokensLeft));
+      
+      setNoTokenPurchased(Moralis.Units.FromWei(tokensPurchased));
     } catch (error) {
       console.error("Error updating token info:", error);
     }
   };
 
+  const updateTokenPrice = async () => {
+    try {
+      let tokenPrice = (await getTokenPriceInBnb()).toString();
+      setPrice(tokenPrice || '0');
+    } catch (error) {
+      setError(error.message || "Error fetching token price");
+    }
+  };
+
   const handleBuy = async (e) => {
     e.preventDefault();
+  
     if (!isCorrectNetwork) {
       toast.error("Please switch to the BNB Testnet to make a purchase", {
         containerId: 'notification'
       });
       return;
     }
-    if (amount <= 0) {
+  
+    if (isNaN(amount) || amount <= 0) {
       toast.error("Please enter a valid amount", {
         containerId: 'notification'
       });
       return;
     }
-    if (!contract) {
-      toast.error("Contract not initialized. Please try reconnecting your wallet.", {
-        containerId: 'notification'
-      });
-      return;
-    }
+  
     setBuyLoading(true);
-    
+  
     try {
-      const tokenPriceBnb = await contract.getTokenPriceInBnb();
+      // Fetch token price in BNB
+      const tokenPriceBnb = ethers.formatEther(await getTokenPriceInBnb());
+      console.log("Token price in BNB:", tokenPriceBnb.toString());
+  
+      // Convert amount to BigNumber
       const tokenAmount = ethers.parseUnits(amount.toString(), 18);
-      const value = tokenAmount * tokenPriceBnb / (ethers.parseUnits("1", 18));
-      
-      const tx = await contract.buyTokens(tokenAmount, { value });
-      await tx.wait();
-      
-      toast.success("Tokens purchased successfully", {
-        containerId: 'notification'
+      console.log("Token amount:", tokenAmount.toString());
+  
+      // Calculate the value (BNB amount to send)
+      const oneBNB = ethers.parseUnits("1", 18);
+      const value = tokenAmount * tokenPriceBnb / oneBNB;
+      console.log("Value to send (in wei):", value.toString());
+  
+      // Call the buyTokens function on the contract
+      await buyTokens({
+        params: { tokenAmount: tokenAmount },
+        msgValue: value,
+        onError: (error) => {
+          throw error;
+        },
+        onSuccess: (tx) => {
+          console.log("Transaction hash:", tx.hash);
+          toast.success("Transaction submitted! Waiting for confirmation...", {
+            containerId: 'notification'
+          });
+  
+          tx.wait(1).then(() => {
+            toast.success("Tokens purchased successfully!", {
+              containerId: 'notification'
+            });
+            updateTokenInfo();
+            setAmount(0);
+          });
+        },
       });
-      await updateTokenInfo(contract);
-      setAmount(0);
+  
     } catch (error) {
       console.error("Detailed error:", error);
+  
       let errorMessage = "Purchase failed";
-      
-      if (error.reason) {
-        errorMessage += ": " + error.reason;
-      } else if (error.message) {
+      if (error.message) {
         errorMessage += ": " + error.message;
       }
-      
-      if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
-        errorMessage += ". The transaction might revert. Check your input amount and contract state.";
-      }
-      
+  
       toast.error(errorMessage, {
         containerId: 'notification'
       });
@@ -128,25 +158,25 @@ const Main = () => {
       setBuyLoading(false);
     }
   };
-
-  // ... StakeForm component remains the same
+  
+  // StakeForm component
   const StakeForm = ({ amount, setAmount, tokenBalance, handleSubmit, buttonText, disabled = false, loading }) => (
     <form onSubmit={handleSubmit}>
       <div className="w-full mt-[8px]">
         <p className="text-right">MAX: {noTokenLeft} FTRS</p>
         <section className="flex justify-end">
           <div className="flex items-center border border-black flex-[2] px-4 mr-[8px]">
-          <input
-            type="number"
-            name="buy"
-            id="buy"
-            min={1}
-            step={1}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full text-right no-arrows outline-none focus:outline-none border-none text-[24px] font-bold"
-            required
-          />
+            <input
+              type="number"
+              name="buy"
+              id="buy"
+              min={1}
+              step={1}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full text-right no-arrows outline-none focus:outline-none border-none text-[24px] font-bold"
+              required
+            />
             <p className="ml-5 text-[24px] font-[100] tracking-[0.22512px] leading-[1.5]">
               FTRS
             </p>
@@ -171,16 +201,17 @@ const Main = () => {
             Max
           </ButtonBase>
         </section>
-        <StakeButton type="submit" buttonText={buttonText} disabled={disabled} Loading={loading} />
+        <StakeButton type="submit" buttonText={buttonText} disabled={disabled} loading={loading} />
       </div>
     </form>
   );
 
+  // Main component render
   return (
     <>
       <ToastContainer position="top-right" autoClose={5000} containerId='notification' />
       <Navbar />
-      {account ? (
+      {isWeb3Enabled ? (
         isCorrectNetwork ? (
           <div className="mt-[70px]">
             <article className="pb-[24px] my-[60px] mb-[80px] md:mb-[100px]">
@@ -194,7 +225,7 @@ const Main = () => {
             <main className="bg-white text-black rounded-[25px] w-full md:w-[450px] mx-auto p-[16px] pb-0">
               <div className="mb-[24px]">
                 <FormHeader leading="Total Tokens" value="240000000 FTRS" />
-                <FormHeader leading="Token's Price" value="0.015 USD" />
+                <FormHeader leading="Token's Price" value={ethers.formatUnits(price, "ether") + " BNB"} />
                 <FormHeader leading="Total Purchased" value={`${noTokenPurchased} FTRS`} />
                 <FormHeader leading="No of Tokens Left" value={`${noTokenLeft} FTRS`} />
               </div>

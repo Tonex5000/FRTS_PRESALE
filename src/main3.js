@@ -10,7 +10,7 @@ import FormHeader from "./FormHeader";
 import StakeButton from "./StakingButton";
 import Navbar from "./Navbar3";
 
-const CONTRACT_ADDRESS = "0xf401b25382AF3F06279c2C568D31d98171974B74";
+const CONTRACT_ADDRESS = "0xa60FD71998Dfa6E7A9a968aCb5AD1BD253DaC91F";
 const CONTRACT_ABI = ContractABI;
 
 const Main = () => {
@@ -80,12 +80,6 @@ const Main = () => {
       });
       return;
     }
-    if (!contract) {
-      toast.error("Contract not initialized. Please try reconnecting your wallet.", {
-        containerId: 'notification'
-      });
-      return;
-    }
     setBuyLoading(true);
     
     try {
@@ -96,9 +90,16 @@ const Main = () => {
       const tokenAmount = ethers.parseUnits(amount.toString(), 18);
       console.log("Token amount:", ethers.formatEther(tokenAmount));
   
-      const value = tokenAmount * tokenPriceBnb / (ethers.parseUnits("1", 18));
+      const value = tokenAmount * tokenPriceBnb / ethers.parseUnits("1", 18);
       console.log("Value to send:", ethers.formatEther(value));
   
+      /* // Estimate gas before sending the transaction
+      const estimatedGas = await contract.buyTokens.estimateGas(tokenAmount, { value });
+      console.log("Estimated gas:", estimatedGas.toString());
+  
+      // Add a buffer to the estimated gas
+      const gasLimit = estimatedGas * 120 / 100; // Adding 20% buffer
+   */
       const tx = await contract.buyTokens(tokenAmount, { value });
       console.log("Transaction sent:", tx.hash);
   
@@ -182,7 +183,6 @@ const Main = () => {
     <>
       <ToastContainer position="top-right" autoClose={5000} containerId='notification' />
       <Navbar />
-      {account ? (
         <div className="mt-[70px]">
           <article className="pb-[24px] my-[60px] mb-[80px] md:mb-[100px]">
             <h2 className="text-[50px] leading-[56px] font-[400]">
@@ -209,12 +209,6 @@ const Main = () => {
             />
           </main>
         </div>
-      ) : (
-        <div className="mt-[70px] text-center">
-          <h1>Please connect your wallet to Purchase the FTRS COIN.</h1>
-          <h2>Making Life Easier.</h2>
-        </div>
-      )}
     </>
   );
 };
