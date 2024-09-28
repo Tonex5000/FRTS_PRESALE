@@ -7,7 +7,7 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 import QRCodeModal from "@walletconnect/qrcode-modal";
 import 'react-toastify/dist/ReactToastify.css';
 
-const BNB_MAINNET_CHAIN_ID = 56; // BSC Mainnet chain ID
+const BNB_MAINNET_CHAIN_ID = 0x38; // BSC Mainnet chain ID
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,21 +21,53 @@ const Navbar = () => {
     }
   }, [account]);
 
-  const checkNetwork = async (provider) => {
-    try {
-      const network = await provider.getNetwork();
-      if (network.chainId !== BNB_MAINNET_CHAIN_ID) {
-        toast.error('Please switch to Binance Smart Chain Mainnet in your wallet.', {
-          position: "bottom-right",
-          autoClose: 5000,
-          closeOnClick: true,
-          draggable: false,
-        });
+  const checkNetwork = async () => {
+    if (window.ethereum) {
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+        if (chainId !== BNB_MAINNET_CHAIN_ID) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: BNB_MAINNET_CHAIN_ID }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              try {
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [
+                    {
+                      chainId: BNB_MAINNET_CHAIN_ID,
+                      chainName: 'BNB Smart Chain',
+                      nativeCurrency: {
+                        name: 'BNB',
+                        symbol: 'BNB',
+                        decimals: 18,
+                      },
+                      rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                      blockExplorerUrls: ['https://bscscan.com'],
+                    },
+                  ],
+                });
+              } catch (addError) {
+                console.error('Failed to add BNB Testnet:', addError);
+                throw addError;
+              }
+            } else {
+              console.error('Failed to switch network:', switchError);
+              throw switchError;
+            }
+          }
+        }
+        return true;
+      } catch (error) {
+        console.error('Error checking network:', error);
         return false;
       }
-      return true;
-    } catch (error) {
-      console.error('Error checking network:', error);
+    } else {
+      console.error('MetaMask is not installed');
       return false;
     }
   };
@@ -47,21 +79,40 @@ const Navbar = () => {
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         
         const provider = new BrowserProvider(window.ethereum);
-        const signer = provider.getSigner();
+        const signer = await provider.getSigner();
         const address = await signer.getAddress();
         
-        if (await checkNetwork(provider)) {
-          setAccount(address);
-          setIsOpen(false);
-          toast.success('Wallet connected successfully', {
-            position: "bottom-right",
-            autoClose: 5000,
-            closeOnClick: true,
-            draggable: false,
-          });
+        setAccount(address);
+        setIsOpen(false);
+        toast.success('Wallet connected successfully', {
+          position: "bottom-right",
+          autoClose: 5000,
+          closeOnClick: true,
+          draggable: false,
+          toastId: 17,
+        });
 
-          window.ethereum.on('accountsChanged', handleAccountsChanged);
-        }
+        // Listen for account changes
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) {
+            setAccount(null);
+            toast.info('Disconnected from MetaMask', {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              draggable: false,
+            });
+          } else {
+            setAccount(accounts[0]);
+            toast.info('MetaMask account changed', {
+              position: "bottom-right",
+              autoClose: 5000,
+              closeOnClick: true,
+              draggable: false,
+            });
+          }
+        });
+
       } catch (error) {
         console.error("Error connecting MetaMask: ", error);
         toast.error('Failed to connect wallet. Please try again.', {
@@ -69,6 +120,7 @@ const Navbar = () => {
           autoClose: 5000,
           closeOnClick: true,
           draggable: false,
+          toastId: 19,
         });
       } finally {
         setIsConnecting(false);
@@ -80,6 +132,7 @@ const Navbar = () => {
         autoClose: false,
         closeOnClick: true,
         draggable: false,
+        toastId: 18,
       });
     }
   };
@@ -111,23 +164,22 @@ const Navbar = () => {
 
       const web3Provider = new BrowserProvider(provider);
 
-      if (await checkNetwork(web3Provider)) {
-        const signer = web3Provider.getSigner();
-        const address = await signer.getAddress();
+      const signer = web3Provider.getSigner();
+      const address = await signer.getAddress();
 
-        setAccount(address);
-        setWalletConnectProvider(provider);
-        setIsOpen(false);
-        toast.success('Wallet connected successfully via WalletConnect', {
-          position: "bottom-right",
-          autoClose: 5000,
-          closeOnClick: true,
-          draggable: false,
-        });
+      setAccount(address);
+      setWalletConnectProvider(provider);
+      setIsOpen(false);
+      toast.success('Wallet connected successfully via WalletConnect', {
+        position: "bottom-right",
+        autoClose: 5000,
+        closeOnClick: true,
+        draggable: false,
+      });
 
         provider.on('accountsChanged', handleAccountsChanged);
       }
-    } catch (error) {
+      catch (error) {
       console.error("Error connecting with WalletConnect: ", error);
       toast.error('Failed to connect wallet. Please try again.', {
         position: "bottom-right",
