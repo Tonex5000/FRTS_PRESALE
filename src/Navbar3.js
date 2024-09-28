@@ -87,18 +87,52 @@ const Navbar = () => {
     }
   };
 
-  const connectToMetaMask1 = async () => {
+  const connectToMetaMask = async () => {
     if (!sdk) return;
+    setIsConnecting(true);
     try {
       const ethereum = sdk.getProvider();
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       setAccount(accounts[0]);
+      setIsOpen(false);
+      toast.success('Wallet connected successfully', {
+        position: "bottom-right",
+        autoClose: 5000,
+        closeOnClick: true,
+        draggable: false,
+        toastId: 17,
+      });
 
       ethereum.on('accountsChanged', (newAccounts) => {
-        setAccount(newAccounts[0]);
+        if (newAccounts.length === 0) {
+          setAccount(null);
+          toast.info('Disconnected from MetaMask', {
+            position: "bottom-right",
+            autoClose: 5000,
+            closeOnClick: true,
+            draggable: false,
+          });
+        } else {
+          setAccount(newAccounts[0]);
+          toast.info('MetaMask account changed', {
+            position: "bottom-right",
+            autoClose: 5000,
+            closeOnClick: true,
+            draggable: false,
+          });
+        }
       });
     } catch (error) {
       console.error("Error connecting to MetaMask", error);
+      toast.error('Failed to connect wallet. Please try again.', {
+        position: "bottom-right",
+        autoClose: 5000,
+        closeOnClick: true,
+        draggable: false,
+        toastId: 19,
+      });
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -251,7 +285,7 @@ const Navbar = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      connectToMetaMask1();
+      connectToMetaMask();
     } else {
       connectWallet();
     }
