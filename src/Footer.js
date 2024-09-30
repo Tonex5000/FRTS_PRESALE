@@ -5,7 +5,7 @@ import { FaTelegramPlane } from "react-icons/fa";
 
 const Footer = () => {
   const FooterLinkBtn = ({ linkIcon, Link }) => {
-    return <a href={Link} target="_blank" className="bg-black p-1 rounded-md h-fit" rel="noreferrer">{linkIcon}</a>;
+    return <a href={Link} target="_blank" className="bg-transparent border-2 border-[#6CDF00] p-1 rounded-md h-fit" rel="noreferrer">{linkIcon}</a>;
   };
 
   const year = new Date().getFullYear();
@@ -16,7 +16,7 @@ const Footer = () => {
         <FooterLinkBtn linkIcon={<FaTelegramPlane size={iconSize-4} />} Link="#"  />
         <FooterLinkBtn linkIcon={<FaXTwitter size={iconSize} />} Link="#" />
       </section>
-      <h5 className="text-[16px] mt-[30px] font-[400]">COPYRIGHT © {year} FUTARES Presales DAPP</h5>
+      <h5 className="text-[16px] mt-[30px] font-[400]">COPYRIGHT © {year} FUTARES PRESALE DAPP</h5>
     </footer>
   );
 };

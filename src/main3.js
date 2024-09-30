@@ -133,21 +133,37 @@ const Main = () => {
     }
   };
 
-  const StakeForm = ({ amount, setAmount, tokenBalance, handleSubmit, buttonText, disabled = false, loading }) => (
+
+  const handleChange = (e) => {
+    let value = e.target.value;
+  
+    // Remove leading zeros while allowing multi-digit input
+    if (/^0\d+$/.test(value)) {
+      value = value.replace(/^0+/, '');
+    }
+  
+    // Allow empty string or positive integers
+    if (value === '' || /^[1-9]\d*$/.test(value)) {
+      setAmount(value);
+    }
+  };
+  
+
+/*   const StakeForm = ({ amount, setAmount, tokenBalance, handleSubmit, buttonText, disabled = false, loading }) => (
     <form onSubmit={handleSubmit}>
       <div className="w-full mt-[8px]">
         <p className="text-right">MAX: {noTokenLeft} FTRS</p>
         <section className="flex justify-end">
           <div className="flex items-center border border-black flex-[2] px-4 mr-[8px]">
           <input
-            type="number"
+            type="Number"
             name="buy"
             id="buy"
             min={1}
             step={1}
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full text-right no-arrows outline-none focus:outline-none border-none text-[24px] font-bold"
+            onChange={handleChange}
+            className="w-full text-right border-none no-arrows outline-none focus:outline-none text-[24px] font-bold"
             required
           />
             <p className="ml-5 text-[24px] font-[100] tracking-[0.22512px] leading-[1.5]">
@@ -177,7 +193,7 @@ const Main = () => {
         <StakeButton type="submit" buttonText={buttonText} disabled={disabled} Loading={loading} />
       </div>
     </form>
-  );
+  ); */
 
   return (
     <>
@@ -192,21 +208,54 @@ const Main = () => {
               Grow Your Wealth with Futares Coin and Secure the Future.
             </p>
           </article>
-          <main className="bg-white text-black rounded-[25px] w-full md:w-[450px] mx-auto p-[16px] pb-0">
+          <main className="bg-white text-black rounded-[25px] w-full md:w-[450px] mx-auto p-[16px] border-2 border-[#6CDF00] pb-[16px]">
             <div className="mb-[24px]">
               <FormHeader leading="Total Tokens" value="240000000 FTRS" />
               <FormHeader leading="Token's Price" value="0.015 USD" />
               <FormHeader leading="Total Purchased" value={`${noTokenPurchased} FTRS`} />
               <FormHeader leading="No of Tokens Left" value={`${noTokenLeft} FTRS`} />
             </div>
-            <StakeForm
-              amount={amount}
-              setAmount={setAmount}
-              tokenBalance={noTokenLeft}
-              handleSubmit={handleBuy}
-              buttonText="BUY"
-              loading={buyLoading}
-            />
+            <form onSubmit={handleBuy}>
+              <div className="w-full mt-[8px]">
+                <p className="text-right">MAX: {noTokenLeft} FTRS</p>
+                <section className="flex justify-end">
+                  <div className="flex items-center border border-black flex-[2] px-4 mr-[8px]">
+                    <input
+                      type="Number"
+                      name="buy"
+                      id="buy"
+                      min={1}
+                      step={1}
+                      value={amount}
+                      onChange={handleChange}
+                      className="w-full text-right border-none no-arrows outline-none focus:outline-none text-[24px] font-bold"
+                      required
+                    />
+                    <p className="ml-5 text-[24px] font-[100] tracking-[0.22512px] leading-[1.5]">FTRS</p>
+                  </div>
+                  <ButtonBase
+                    className="MuiTouchRipple-root"
+                    onClick={() => setAmount(noTokenLeft)}
+                    style={{
+                      backgroundColor: '#6cdf00',
+                      padding: "20px",
+                      paddingLeft: "24px",
+                      paddingRight: "24px",
+                      fontSize: "14px",
+                      color: "white",
+                      borderRadius: "5px",
+                      textTransform: "uppercase",
+                      fontWeight: 400,
+                      letterSpacing: "0.02857em",
+                      lineHeight: "1.75",
+                    }}
+                  >
+                    Max
+                  </ButtonBase>
+                </section>
+                <StakeButton type="submit" buttonText="BUY" disabled={buyLoading} Loading={buyLoading} />
+              </div>
+          </form>
           </main>
         </div>
     </>
