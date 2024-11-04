@@ -61,25 +61,6 @@ const ContractABI = [
 			{
 				"indexed": true,
 				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "FundsTransferred",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
 				"name": "previousOwner",
 				"type": "address"
 			},
@@ -113,12 +94,6 @@ const ContractABI = [
 				"indexed": false,
 				"internalType": "uint256",
 				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "bnbPaid",
 				"type": "uint256"
 			}
 		],

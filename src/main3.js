@@ -10,7 +10,7 @@ import FormHeader from "./FormHeader";
 import StakeButton from "./StakingButton";
 import Navbar from "./Navbar3";
 
-const CONTRACT_ADDRESS = "0xa60FD71998Dfa6E7A9a968aCb5AD1BD253DaC91F";
+const CONTRACT_ADDRESS = "0xeAEeE97A18B132413df23234EF9E4c37654c3022";
 const CONTRACT_ABI = ContractABI;
 
 const Main = () => {
@@ -211,7 +211,7 @@ const Main = () => {
           <main className="bg-white text-black rounded-[25px] w-full md:w-[450px] mx-auto p-[16px] border-2 border-[#6CDF00] pb-[16px]">
             <div className="mb-[24px]">
               <FormHeader leading="Total Tokens" value="240000000 FTRS" />
-              <FormHeader leading="Token's Price" value="0.015 USD" />
+              <FormHeader leading="Token's Price" value="0.0165 USD" />
               <FormHeader leading="Total Purchased" value={`${noTokenPurchased} FTRS`} />
               <FormHeader leading="No of Tokens Left" value={`${noTokenLeft} FTRS`} />
             </div>

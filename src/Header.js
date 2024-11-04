@@ -7,9 +7,9 @@ const Header = () => {
       <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
         <div className="flex items-center">
           <img src={logo} alt="Logo" className="mr-2 w-12 h-12 object-contain" />
-          <span className="text-xl font-bold">Fatures</span>
+          <span className="text-xl font-bold">Futares</span>
         </div>
-        <a href="/" className="underline">Back to Home</a>
+        <a href="https://futarescoin.com" className="underline">Back to Home</a>
       </div>
     </header>
   );

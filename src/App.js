@@ -7,7 +7,7 @@ import { MoralisProvider } from "react-moralis";
 import Footer from './Footer';
 import { WalletProvider } from './WalletContext';
 import Header from './Header';
-import Navbar from './Navbar3';
+//import Navbar from './Navbar3';
 
 
 window.Buffer = buffer.Buffer;
@@ -17,7 +17,7 @@ function App() {
     <>
       <Header />
       {/* Background container with an overlay */}
-      <div className="relative text-[#6CDF00] px-[3vw] text-center min-h-screen">
+      <div className="relative text-white px-[3vw] text-center min-h-screen">
         {/* Background image */}
         <div className="absolute inset-0 bg-[url('/src/assets/bg.jpg')] bg-cover bg-center"></div>
         
